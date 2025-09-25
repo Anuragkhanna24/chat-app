@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -22,8 +22,8 @@ export const authAPI = {
 
 export const usersAPI = {
   getUsers: () => api.get('/api/users'),
-  getUser: (id) => api.get(`/api/users/${id}`),
     createUser: (data) => api.post('/api/users', data),
+  getUser: (id) => api.get(`/api/users/${id}`),
   updateUser: (id, data) => api.put(`/api/users/${id}`, data),
   deleteUser: (id) => api.delete(`/api/users/${id}`),
 };
