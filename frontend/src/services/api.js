@@ -1,10 +1,11 @@
 import axios from 'axios';
 
-
+// For production, use relative path since both are on same domain (if using custom domain)
+// Or use absolute path if using different domains
 const getApiUrl = () => {
   // If using same domain for frontend/backend
-  if (window.location.hostname === 'https://chat-app-gold-seven-75.vercel.app') {
-    return 'https://chat-app-0zp4.onrender.com';
+  if (window.location.hostname === 'your-frontend-app.vercel.app') {
+    return 'https://your-backend-app.onrender.com';
   }
   // For local development
   return import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -56,10 +57,39 @@ api.interceptors.response.use(
   }
 );
 
+// Auth API endpoints
 export const authAPI = {
   login: (credentials) => api.post('/api/auth/login', credentials),
   register: (userData) => api.post('/api/auth/register', userData),
   getProfile: () => api.get('/api/auth/profile'),
 };
+
+// Users API endpoints - MAKE SURE THIS EXPORT EXISTS
+export const usersAPI = {
+  getUsers: () => api.get('/api/users'),
+  createUser: (data) => api.post('/api/users', data),
+  getUser: (id) => api.get(`/api/users/${id}`),
+  updateUser: (id, data) => api.put(`/api/users/${id}`, data),
+  deleteUser: (id) => api.delete(`/api/users/${id}`),
+};
+
+// Messages API endpoints
+export const messagesAPI = {
+  getMessages: (userId) => api.get(`/api/messages/${userId}`),
+  sendMessage: (data) => api.post('/api/messages/send', data),
+  uploadFile: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/api/messages/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      timeout: 30000, // Longer timeout for file uploads
+    });
+  },
+};
+
+// Health check function
+export const healthCheck = () => api.get('/api/health');
 
 export default api;
