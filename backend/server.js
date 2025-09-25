@@ -19,23 +19,32 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const server = http.createServer(app);
+
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    origin: process.env.CLIENT_URL,
     methods: ["GET", "POST"],
+    credentials: true,
   },
 });
 
 connectDB();
 
-app.use(cors());
+// Middleware
+app.use(cors({
+  origin: process.env.CLIENT_URL,
+  methods: ["GET", "POST"],
+  credentials: true,
+}));
 app.use(express.json());
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+// Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/messages", messageRoutes);
 
+// Socket.io
 const onlineUsers = new Map();
 
 io.on("connection", (socket) => {
@@ -43,17 +52,12 @@ io.on("connection", (socket) => {
 
   socket.on("user_online", async (userId) => {
     onlineUsers.set(userId, socket.id);
-
     try {
       await User.findByIdAndUpdate(userId, {
         isOnline: true,
         lastSeen: new Date(),
       });
-
-      socket.broadcast.emit("user_status_change", {
-        userId,
-        isOnline: true,
-      });
+      socket.broadcast.emit("user_status_change", { userId, isOnline: true });
     } catch (error) {
       console.error("Error updating user status:", error);
     }
@@ -62,11 +66,7 @@ io.on("connection", (socket) => {
   socket.on("send_message", async (data) => {
     try {
       const receiverSocketId = onlineUsers.get(data.receiverId);
-
-      if (receiverSocketId) {
-        io.to(receiverSocketId).emit("receive_message", data);
-      }
-
+      if (receiverSocketId) io.to(receiverSocketId).emit("receive_message", data);
       socket.emit("message_sent", data);
     } catch (error) {
       console.error("Error sending message:", error);
@@ -75,16 +75,12 @@ io.on("connection", (socket) => {
 
   socket.on("typing_start", (data) => {
     const receiverSocketId = onlineUsers.get(data.receiverId);
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("typing_start", data);
-    }
+    if (receiverSocketId) io.to(receiverSocketId).emit("typing_start", data);
   });
 
   socket.on("typing_stop", (data) => {
     const receiverSocketId = onlineUsers.get(data.receiverId);
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("typing_stop", data);
-    }
+    if (receiverSocketId) io.to(receiverSocketId).emit("typing_stop", data);
   });
 
   socket.on("disconnect", async () => {
@@ -104,7 +100,6 @@ io.on("connection", (socket) => {
           isOnline: false,
           lastSeen: new Date(),
         });
-
         socket.broadcast.emit("user_status_change", {
           userId: disconnectedUserId,
           isOnline: false,
@@ -119,7 +114,4 @@ io.on("connection", (socket) => {
 });
 
 const PORT = process.env.PORT || 5000;
-
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
